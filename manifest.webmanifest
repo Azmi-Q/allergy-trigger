@@ -1,0 +1,17 @@
+{
+  "name": "Allergy Trigger Logger",
+  "short_name": "Allergy Log",
+  "description": "Record allergy symptoms, context, and possible triggers, then export to Excel.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f3f7f8",
+  "theme_color": "#0f3d5e",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f3d5e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Allergy Log" />
+  <title>Allergy Trigger Logger</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #f3f7f8;
+      --surface: #ffffff;
+      --surface-soft: #f8fbfc;
+      --text: #10212b;
+      --muted: #64727d;
+      --line: #d6e0e4;
+      --accent: #0f5f7a;
+      --accent-dark: #0a4358;
+      --accent-soft: #e4f4f8;
+      --danger: #b42318;
+      --danger-soft: #fff1f3;
+      --success: #067647;
+      --warning: #b54708;
+      --shadow: 0 10px 30px rgba(15, 61, 94, 0.10);
+      --radius: 18px;
+      --radius-sm: 12px;
+      --tap: 46px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(15, 95, 122, 0.16), transparent 34rem),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+
+    header {
+      background: linear-gradient(135deg, #0c344b, #0f6a83);
+      color: white;
+      padding: calc(18px + env(safe-area-inset-top)) 16px 22px;
+      border-bottom-left-radius: 28px;
+      border-bottom-right-radius: 28px;
+      box-shadow: 0 10px 32px rgba(15, 61, 94, 0.25);
+    }
+
+    .container {
+      width: min(1120px, calc(100% - 24px));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.18);
+      display: grid;
+      place-items: center;
+      font-size: 1.2rem;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+    }
+
+    .privacy-chip {
+      background: rgba(255,255,255,0.16);
+      border: 1px solid rgba(255,255,255,0.22);
+      color: #edfaff;
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.75rem, 7vw, 3rem);
+      line-height: 1.05;
+      letter-spacing: -0.05em;
+      max-width: 760px;
+    }
+
+    header p {
+      margin: 0;
+      max-width: 760px;
+      color: #d9f4fb;
+      font-size: clamp(0.95rem, 2.7vw, 1.06rem);
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: 1fr 0.95fr;
+      gap: 18px;
+      margin: 18px auto 28px;
+      align-items: start;
+    }
+
+    @media (max-width: 940px) {
+      .app-shell { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid rgba(214, 224, 228, 0.95);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      backdrop-filter: blur(8px);
+    }
+
+    @media (max-width: 640px) {
+      .container { width: min(100% - 18px, 1120px); }
+      .card { padding: 14px; border-radius: 16px; }
+      .app-shell { margin-top: 12px; gap: 12px; }
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1.22rem;
+      line-height: 1.2;
+      letter-spacing: -0.025em;
+    }
+
+    h3 {
+      margin: 22px 0 10px;
+      font-size: 1rem;
+      letter-spacing: -0.01em;
+    }
+
+    .subtle {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin: 4px 0 0;
+    }
+
+    label {
+      display: block;
+      font-weight: 720;
+      margin: 13px 0 7px;
+      color: #203441;
+      font-size: 0.94rem;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      min-height: var(--tap);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      padding: 11px 12px;
+      font: inherit;
+      font-size: 16px;
+      background: #fff;
+      color: var(--text);
+    }
+
+    select {
+      appearance: none;
+      background-image:
+        linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+        linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+      background-position:
+        calc(100% - 20px) calc(50% - 2px),
+        calc(100% - 14px) calc(50% - 2px);
+      background-size: 6px 6px, 6px 6px;
+      background-repeat: no-repeat;
+      padding-right: 36px;
+    }
+
+    textarea {
+      min-height: 86px;
+      resize: vertical;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: 4px solid rgba(15, 95, 122, 0.14);
+      border-color: var(--accent);
+    }
+
+    .two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 700px) {
+      .two { grid-template-columns: 1fr; gap: 0; }
+    }
+
+    .notice {
+      border: 1px solid #fedf89;
+      background: #fffaeb;
+      padding: 12px;
+      border-radius: 14px;
+      color: #5f3b00;
+      margin: 0 0 16px;
+      font-size: 0.92rem;
+    }
+
+    .checks {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 9px;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 700px) {
+      .checks { grid-template-columns: 1fr; }
+    }
+
+    .check {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 46px;
+      border: 1px solid #dce7eb;
+      border-radius: 14px;
+      padding: 9px 11px;
+      background: var(--surface-soft);
+      font-weight: 600;
+      color: #314754;
+      margin: 0;
+      user-select: none;
+    }
+
+    .check:has(input:checked) {
+      background: var(--accent-soft);
+      border-color: #8ccbd9;
+      color: #08384b;
+    }
+
+    .check input {
+      width: 20px;
+      height: 20px;
+      min-height: auto;
+      margin: 0;
+      accent-color: var(--accent);
+      flex: 0 0 auto;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    button, .file-button {
+      min-height: var(--tap);
+      border: 0;
+      border-radius: 13px;
+      padding: 10px 14px;
+      font: inherit;
+      font-weight: 780;
+      cursor: pointer;
+      background: var(--accent);
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    button:hover, .file-button:hover { background: var(--accent-dark); }
+
+    .secondary {
+      background: #eef7fa;
+      color: #0d4c62;
+      border: 1px solid #bfe1ea;
+    }
+
+    .secondary:hover { background: #dff0f5; }
+
+    .danger {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border: 1px solid #fecdd6;
+    }
+
+    .danger:hover { background: #ffe4e8; }
+
+    .sticky-save {
+      position: sticky;
+      bottom: 0;
+      z-index: 5;
+      margin: 18px -18px -18px;
+      padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+      background: rgba(255, 255, 255, 0.92);
+      border-top: 1px solid #e6eef1;
+      backdrop-filter: blur(10px);
+      border-bottom-left-radius: var(--radius);
+      border-bottom-right-radius: var(--radius);
+      display: flex;
+      gap: 10px;
+    }
+
+    .sticky-save button { flex: 1; }
+
+    @media (max-width: 640px) {
+      .sticky-save {
+        margin: 16px -14px -14px;
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+    }
+
+    .successbox {
+      border: 1px solid #abefc6;
+      background: #ecfdf3;
+      padding: 10px 12px;
+      border-radius: 13px;
+      color: #054f31;
+      display: none;
+      margin-top: 12px;
+      font-weight: 650;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+      margin-bottom: 14px;
+    }
+
+    @media (max-width: 520px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+      .stat:nth-child(3) { grid-column: 1 / -1; }
+    }
+
+    .stat {
+      border: 1px solid #dce7eb;
+      border-radius: 15px;
+      padding: 12px;
+      background: var(--surface-soft);
+      min-width: 0;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 1.35rem;
+      line-height: 1.05;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .export-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 9px;
+      margin: 14px 0;
+    }
+
+    @media (max-width: 520px) {
+      .export-grid { grid-template-columns: 1fr; }
+    }
+
+    .desktop-table {
+      overflow-x: auto;
+      border: 1px solid #dce7eb;
+      border-radius: 15px;
+      background: white;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 820px;
+    }
+
+    th, td {
+      padding: 10px 11px;
+      border-bottom: 1px solid #e7eef1;
+      text-align: left;
+      vertical-align: top;
+      font-size: 0.9rem;
+    }
+
+    th {
+      background: #f8fbfc;
+      color: #344954;
+      font-weight: 800;
+    }
+
+    .mobile-list {
+      display: none;
+      gap: 10px;
+    }
+
+    @media (max-width: 780px) {
+      .desktop-table { display: none; }
+      .mobile-list { display: grid; }
+    }
+
+    .entry-card {
+      border: 1px solid #dce7eb;
+      background: #fff;
+      border-radius: 16px;
+      padding: 13px;
+      box-shadow: 0 4px 14px rgba(15, 61, 94, 0.06);
+    }
+
+    .entry-card-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .entry-card time {
+      font-weight: 820;
+      letter-spacing: -0.01em;
+    }
+
+    .severity {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 9px;
+      background: var(--accent-soft);
+      color: #08384b;
+      font-size: 0.8rem;
+      font-weight: 780;
+      white-space: nowrap;
+    }
+
+    .entry-row {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 8px;
+      padding: 7px 0;
+      border-top: 1px solid #edf2f4;
+      font-size: 0.92rem;
+    }
+
+    .entry-row span:first-child {
+      color: var(--muted);
+      font-weight: 720;
+    }
+
+    .row-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .row-actions button { flex: 1; }
+
+    .mini {
+      min-height: 40px;
+      padding: 7px 10px;
+      font-size: 0.86rem;
+      border-radius: 11px;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      background: #eef7fa;
+      color: #0d4c62;
+      margin: 2px 4px 2px 0;
+      white-space: nowrap;
+      font-weight: 650;
+    }
+
+    .empty {
+      border: 1px dashed #cbd8dd;
+      background: #fbfdfd;
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    footer {
+      padding: 4px 0 32px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      text-align: center;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div class="topbar">
+        <div class="brand"><span class="logo" aria-hidden="true">✚</span><span>Allergy Log</span></div>
+        <div class="privacy-chip">Local data</div>
+      </div>
+      <h1>Track symptoms and possible allergy triggers</h1>
+      <p>Log each episode on your phone, then export a timestamped Excel sheet for later review and correlation analysis.</p>
+    </div>
+  </header>
+
+  <main class="container app-shell">
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <h2>New episode</h2>
+          <p class="subtle">Complete what you know. Empty fields are acceptable.</p>
+        </div>
+      </div>
+
+      <p class="notice">
+        This is a personal tracking tool, not a diagnostic tool. Seek urgent care for airway compromise, wheeze, facial/tongue swelling, collapse, hypotension, or rapidly progressive symptoms.
+      </p>
+
+      <form id="entryForm">
+        <input type="hidden" id="editId" />
+
+        <div class="two">
+          <div>
+            <label for="eventDateTime">Date and time</label>
+            <input id="eventDateTime" type="datetime-local" required />
+          </div>
+          <div>
+            <label for="severity">Severity</label>
+            <select id="severity" required>
+              <option value="">Select</option>
+              <option value="1 - Minimal">1 - Minimal</option>
+              <option value="2 - Mild">2 - Mild</option>
+              <option value="3 - Moderate">3 - Moderate</option>
+              <option value="4 - Severe">4 - Severe</option>
+              <option value="5 - Emergency/anaphylaxis features">5 - Emergency/anaphylaxis features</option>
+            </select>
+          </div>
+        </div>
+
+        <h3>Symptoms</h3>
+        <div id="symptomsGroup" class="checks"></div>
+
+        <h3>Context at the time</h3>
+        <div class="two">
+          <div>
+            <label for="location">Location</label>
+            <input id="location" placeholder="Home, ward, outdoors, restaurant..." autocomplete="off" />
+          </div>
+          <div>
+            <label for="activity">Activity</label>
+            <input id="activity" placeholder="Eating, exercising, cleaning..." autocomplete="off" />
+          </div>
+        </div>
+
+        <label for="foods">Foods/drinks in previous 6 hours</label>
+        <textarea id="foods" placeholder="Include ingredients if known, e.g. nuts, shellfish, sesame, dairy, restaurant meal."></textarea>
+
+        <label for="medications">Medications/supplements in previous 24 hours</label>
+        <textarea id="medications" placeholder="Include NSAIDs, antibiotics, new medication, dose changes."></textarea>
+
+        <h3>Potential triggers/exposures</h3>
+        <div id="triggersGroup" class="checks"></div>
+
+        <label for="otherTriggers">Other possible triggers</label>
+        <textarea id="otherTriggers" placeholder="Pets, dust, pollen, mould, latex, cleaning products, cosmetics, insect bites, infection, heat/cold, stress..."></textarea>
+
+        <div class="two">
+          <div>
+            <label for="latency">Time from exposure to symptoms</label>
+            <select id="latency">
+              <option value="">Select</option>
+              <option value="Immediate">Immediate</option>
+              <option value="1 - 15 minutes">1 - 15 minutes</option>
+              <option value="15 - 30 minutes">15 - 30 minutes</option>
+              <option value="30 - 45 minutes">30 - 45 minutes</option>
+              <option value="45 - 60 minutes">45 - 60 minutes</option>
+              <option value="1 hour - 2 hours">1 hour - 2 hours</option>
+              <option value=">2 hours">&gt;2 hours</option>
+            </select>
+          </div>
+          <div>
+            <label for="duration">Duration</label>
+            <select id="duration">
+              <option value="">Select</option>
+              <option value="Immediate">Immediate</option>
+              <option value="1 - 15 minutes">1 - 15 minutes</option>
+              <option value="15 - 30 minutes">15 - 30 minutes</option>
+              <option value="30 - 45 minutes">30 - 45 minutes</option>
+              <option value="45 - 60 minutes">45 - 60 minutes</option>
+              <option value="1 hour - 2 hours">1 hour - 2 hours</option>
+              <option value=">2 hours">&gt;2 hours</option>
+            </select>
+          </div>
+        </div>
+
+        <label for="treatment">Treatment used</label>
+        <textarea id="treatment" placeholder="Cetirizine, chlorphenamine, salbutamol, adrenaline autoinjector, steroids, none."></textarea>
+
+        <label for="outcome">Outcome / response</label>
+        <textarea id="outcome" placeholder="Improved after 30 min, recurred, attended ED, no response, etc."></textarea>
+
+        <label for="notes">Additional notes</label>
+        <textarea id="notes" placeholder="Anything else that may help later correlation analysis."></textarea>
+
+        <div class="successbox" id="statusBox"></div>
+
+        <div class="sticky-save">
+          <button type="button" class="secondary" id="resetBtn">Reset</button>
+          <button type="submit" id="saveBtn">Save episode</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <h2>Recorded episodes</h2>
+          <p class="subtle">Export regularly if using across devices.</p>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <strong id="entryCount">0</strong>
+          <span class="muted">entries</span>
+        </div>
+        <div class="stat">
+          <strong id="lastEntry">—</strong>
+          <span class="muted">last entry</span>
+        </div>
+        <div class="stat">
+          <strong id="topTrigger">—</strong>
+          <span class="muted">common trigger</span>
+        </div>
+      </div>
+
+      <div class="export-grid">
+        <button type="button" id="exportXlsx">Export Excel</button>
+        <button type="button" class="secondary" id="exportCsv">Export CSV</button>
+        <button type="button" class="secondary" id="exportJson">Backup JSON</button>
+        <label class="file-button secondary">
+          Import JSON
+          <input id="importJson" type="file" accept="application/json" class="sr-only">
+        </label>
+        <button type="button" class="danger" id="clearAll">Clear all</button>
+      </div>
+
+      <p class="muted">
+        Data is stored on this browser only. To use another phone/computer, export a JSON backup and import it there.
+      </p>
+
+      <div class="desktop-table">
+        <table id="entriesTable">
+          <thead>
+            <tr>
+              <th>Date/time</th>
+              <th>Severity</th>
+              <th>Symptoms</th>
+              <th>Triggers</th>
+              <th>Activity/location</th>
+              <th>Treatment/outcome</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="entriesBody"></tbody>
+        </table>
+      </div>
+
+      <div id="mobileEntries" class="mobile-list"></div>
+    </section>
+  </main>
+
+  <footer class="container">
+    For clinical review, export the spreadsheet and share it with your clinician/allergy service.
+  </footer>
+
+  <script>
+    const STORAGE_KEY = "allergyTriggerLogger.entries.v2";
+
+    const symptomOptions = [
+      "Urticaria/rash", "Itching", "Angioedema", "Lip/tongue swelling",
+      "Wheeze", "Shortness of breath", "Cough", "Rhinitis/sneezing",
+      "Conjunctivitis", "Abdominal pain", "Vomiting", "Diarrhoea",
+      "Dizziness/presyncope", "Syncope/collapse", "Headache", "Other"
+    ];
+
+    const triggerOptions = [
+      "Nuts", "Shellfish/fish", "Egg", "Dairy", "Wheat/gluten", "Sesame",
+      "Fruit/vegetable", "Alcohol", "NSAID", "Antibiotic", "New medication",
+      "Exercise", "Cold exposure", "Heat/sweating", "Pollen", "Dust",
+      "Mould", "Pet/animal", "Latex", "Cosmetics/skincare",
+      "Cleaning product", "Perfume/fragrance", "Insect bite/sting",
+      "Infection", "Stress", "Unknown"
+    ];
+
+    function pad(n) { return String(n).padStart(2, "0"); }
+
+    function nowLocalInputValue() {
+      const d = new Date();
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function timestampForFilename() {
+      const d = new Date();
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function makeCheckboxes(containerId, options, prefix) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = "";
+      options.forEach((opt, idx) => {
+        const id = `${prefix}_${idx}`;
+        const label = document.createElement("label");
+        label.className = "check";
+        label.innerHTML = `<input type="checkbox" id="${id}" value="${escapeHtml(opt)}"> <span>${escapeHtml(opt)}</span>`;
+        container.appendChild(label);
+      });
+    }
+
+    function migrateOldStorageIfNeeded() {
+      const oldKeys = ["allergyTriggerLogger.entries.v1"];
+      if (localStorage.getItem(STORAGE_KEY)) return;
+      for (const key of oldKeys) {
+        const old = localStorage.getItem(key);
+        if (old) {
+          localStorage.setItem(STORAGE_KEY, old);
+          return;
+        }
+      }
+    }
+
+    function getEntries() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveEntries(entries) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    }
+
+    function selectedValues(prefix) {
+      return [...document.querySelectorAll(`input[id^="${prefix}_"]:checked`)].map(x => x.value);
+    }
+
+    function setSelectedValues(prefix, values) {
+      const set = new Set(values || []);
+      document.querySelectorAll(`input[id^="${prefix}_"]`).forEach(input => {
+        input.checked = set.has(input.value);
+      });
+    }
+
+    function formToEntry() {
+      const editId = document.getElementById("editId").value;
+      const createdAt = new Date().toISOString();
+
+      return {
+        id: editId || crypto.randomUUID(),
+        createdAt,
+        updatedAt: createdAt,
+        eventDateTime: document.getElementById("eventDateTime").value,
+        severity: document.getElementById("severity").value,
+        symptoms: selectedValues("symptom"),
+        location: document.getElementById("location").value.trim(),
+        activity: document.getElementById("activity").value.trim(),
+        foods: document.getElementById("foods").value.trim(),
+        medications: document.getElementById("medications").value.trim(),
+        triggers: selectedValues("trigger"),
+        otherTriggers: document.getElementById("otherTriggers").value.trim(),
+        latency: document.getElementById("latency").value,
+        duration: document.getElementById("duration").value,
+        treatment: document.getElementById("treatment").value.trim(),
+        outcome: document.getElementById("outcome").value.trim(),
+        notes: document.getElementById("notes").value.trim()
+      };
+    }
+
+    function entryToForm(entry) {
+      document.getElementById("editId").value = entry.id;
+      document.getElementById("eventDateTime").value = entry.eventDateTime || nowLocalInputValue();
+      document.getElementById("severity").value = entry.severity || "";
+      setSelectedValues("symptom", entry.symptoms || []);
+      document.getElementById("location").value = entry.location || "";
+      document.getElementById("activity").value = entry.activity || "";
+      document.getElementById("foods").value = entry.foods || "";
+      document.getElementById("medications").value = entry.medications || "";
+      setSelectedValues("trigger", entry.triggers || []);
+      document.getElementById("otherTriggers").value = entry.otherTriggers || "";
+      document.getElementById("latency").value = entry.latency || "";
+      document.getElementById("duration").value = entry.duration || "";
+      document.getElementById("treatment").value = entry.treatment || "";
+      document.getElementById("outcome").value = entry.outcome || "";
+      document.getElementById("notes").value = entry.notes || "";
+      document.getElementById("saveBtn").textContent = "Update episode";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function resetForm() {
+      document.getElementById("entryForm").reset();
+      document.getElementById("editId").value = "";
+      setSelectedValues("symptom", []);
+      setSelectedValues("trigger", []);
+      document.getElementById("eventDateTime").value = nowLocalInputValue();
+      document.getElementById("saveBtn").textContent = "Save episode";
+    }
+
+    function showStatus(message) {
+      const box = document.getElementById("statusBox");
+      box.textContent = message;
+      box.style.display = "block";
+      setTimeout(() => { box.style.display = "none"; }, 2600);
+    }
+
+    function compactPills(values) {
+      if (!values || values.length === 0) return "<span class='muted'>—</span>";
+      return values.slice(0, 4).map(v => `<span class="pill">${escapeHtml(v)}</span>`).join("") +
+        (values.length > 4 ? `<span class="pill">+${values.length - 4}</span>` : "");
+    }
+
+    function plainList(values) {
+      return values && values.length ? values.join(", ") : "—";
+    }
+
+    function render() {
+      const entries = getEntries().sort((a,b) => (b.eventDateTime || "").localeCompare(a.eventDateTime || ""));
+      const tbody = document.getElementById("entriesBody");
+      const mobile = document.getElementById("mobileEntries");
+      tbody.innerHTML = "";
+      mobile.innerHTML = "";
+
+      if (entries.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="muted">No entries yet.</td></tr>`;
+        mobile.innerHTML = `<div class="empty">No episodes recorded yet.</div>`;
+      } else {
+        entries.forEach(entry => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${escapeHtml(entry.eventDateTime || "—")}</td>
+            <td>${escapeHtml(entry.severity || "—")}</td>
+            <td>${compactPills(entry.symptoms)}</td>
+            <td>${compactPills(entry.triggers)}<div class="muted">${escapeHtml(entry.otherTriggers || "")}</div></td>
+            <td><strong>${escapeHtml(entry.activity || "—")}</strong><div class="muted">${escapeHtml(entry.location || "")}</div></td>
+            <td><strong>${escapeHtml(entry.treatment || "—")}</strong><div class="muted">${escapeHtml(entry.outcome || "")}</div></td>
+            <td>
+              <div class="row-actions">
+                <button class="mini secondary" onclick="editEntry('${entry.id}')">Edit</button>
+                <button class="mini danger" onclick="deleteEntry('${entry.id}')">Delete</button>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+
+          const card = document.createElement("article");
+          card.className = "entry-card";
+          card.innerHTML = `
+            <div class="entry-card-header">
+              <time>${escapeHtml(entry.eventDateTime || "—")}</time>
+              <span class="severity">${escapeHtml(entry.severity || "No severity")}</span>
+            </div>
+            <div class="entry-row"><span>Symptoms</span><div>${escapeHtml(plainList(entry.symptoms))}</div></div>
+            <div class="entry-row"><span>Triggers</span><div>${escapeHtml(plainList(entry.triggers))}${entry.otherTriggers ? "<br><span class='muted'>" + escapeHtml(entry.otherTriggers) + "</span>" : ""}</div></div>
+            <div class="entry-row"><span>Context</span><div>${escapeHtml(entry.activity || "—")}${entry.location ? " · " + escapeHtml(entry.location) : ""}</div></div>
+            <div class="entry-row"><span>Timing</span><div>${escapeHtml(entry.latency || "—")} / ${escapeHtml(entry.duration || "—")}</div></div>
+            <div class="entry-row"><span>Treatment</span><div>${escapeHtml(entry.treatment || "—")}</div></div>
+            <div class="row-actions">
+              <button class="mini secondary" onclick="editEntry('${entry.id}')">Edit</button>
+              <button class="mini danger" onclick="deleteEntry('${entry.id}')">Delete</button>
+            </div>
+          `;
+          mobile.appendChild(card);
+        });
+      }
+
+      document.getElementById("entryCount").textContent = entries.length;
+      document.getElementById("lastEntry").textContent = entries[0]?.eventDateTime ? entries[0].eventDateTime.slice(0,10) : "—";
+      document.getElementById("topTrigger").textContent = getTopTrigger(entries);
+    }
+
+    function getTopTrigger(entries) {
+      const counts = {};
+      entries.forEach(e => (e.triggers || []).forEach(t => counts[t] = (counts[t] || 0) + 1));
+      const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+      return sorted[0] ? sorted[0][0] : "—";
+    }
+
+    window.editEntry = function(id) {
+      const entry = getEntries().find(e => e.id === id);
+      if (entry) entryToForm(entry);
+    }
+
+    window.deleteEntry = function(id) {
+      if (!confirm("Delete this episode?")) return;
+      saveEntries(getEntries().filter(e => e.id !== id));
+      render();
+    }
+
+    function exportRows() {
+      return getEntries()
+        .sort((a,b) => (a.eventDateTime || "").localeCompare(b.eventDateTime || ""))
+        .map(e => ({
+          "Event date/time": e.eventDateTime,
+          "Created timestamp": e.createdAt,
+          "Updated timestamp": e.updatedAt,
+          "Severity": e.severity,
+          "Symptoms": (e.symptoms || []).join("; "),
+          "Location": e.location,
+          "Activity": e.activity,
+          "Foods/drinks previous 6h": e.foods,
+          "Medications previous 24h": e.medications,
+          "Potential triggers": (e.triggers || []).join("; "),
+          "Other triggers": e.otherTriggers,
+          "Latency from exposure": e.latency,
+          "Duration": e.duration,
+          "Treatment": e.treatment,
+          "Outcome": e.outcome,
+          "Additional notes": e.notes,
+          "Entry ID": e.id
+        }));
+    }
+
+    function downloadBlob(content, mime, filename) {
+      const blob = new Blob([content], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportCsv() {
+      const rows = exportRows();
+      if (rows.length === 0) return alert("No entries to export.");
+      const headers = Object.keys(rows[0]);
+      const csv = [
+        headers.join(","),
+        ...rows.map(row => headers.map(h => `"${String(row[h] ?? "").replaceAll('"', '""')}"`).join(","))
+      ].join("\n");
+      downloadBlob(csv, "text/csv;charset=utf-8", `allergy_trigger_log_${timestampForFilename()}.csv`);
+    }
+
+    function exportJson() {
+      const entries = getEntries();
+      if (entries.length === 0) return alert("No entries to export.");
+      downloadBlob(JSON.stringify(entries, null, 2), "application/json", `allergy_trigger_backup_${timestampForFilename()}.json`);
+    }
+
+    function exportXlsx() {
+      const rows = exportRows();
+      if (rows.length === 0) return alert("No entries to export.");
+      if (!window.XLSX) {
+        alert("Excel export library failed to load. Check your internet connection or use CSV export.");
+        return;
+      }
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      worksheet["!cols"] = Object.keys(rows[0]).map(key => ({ wch: Math.min(Math.max(key.length + 4, 16), 42) }));
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Allergy log");
+      XLSX.writeFile(workbook, `allergy_trigger_log_${timestampForFilename()}.xlsx`);
+    }
+
+    document.getElementById("entryForm").addEventListener("submit", event => {
+      event.preventDefault();
+      const entry = formToEntry();
+      const entries = getEntries();
+      const existingIndex = entries.findIndex(e => e.id === entry.id);
+
+      if (existingIndex >= 0) {
+        entry.createdAt = entries[existingIndex].createdAt || entry.createdAt;
+        entry.updatedAt = new Date().toISOString();
+        entries[existingIndex] = entry;
+        showStatus("Episode updated.");
+      } else {
+        entries.push(entry);
+        showStatus("Episode saved.");
+      }
+
+      saveEntries(entries);
+      resetForm();
+      render();
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", resetForm);
+    document.getElementById("exportCsv").addEventListener("click", exportCsv);
+    document.getElementById("exportJson").addEventListener("click", exportJson);
+    document.getElementById("exportXlsx").addEventListener("click", exportXlsx);
+
+    document.getElementById("clearAll").addEventListener("click", () => {
+      if (!confirm("This will permanently clear entries stored in this browser. Export a backup first if needed. Continue?")) return;
+      localStorage.removeItem(STORAGE_KEY);
+      resetForm();
+      render();
+    });
+
+    document.getElementById("importJson").addEventListener("change", event => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (!Array.isArray(imported)) throw new Error("Invalid backup file.");
+          const cleaned = imported.filter(x => x && x.id);
+          saveEntries(cleaned);
+          render();
+          showStatus(`Imported ${cleaned.length} entries.`);
+        } catch (err) {
+          alert("Could not import JSON backup.");
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = "";
+    });
+
+    if ("serviceWorker" in navigator && location.protocol !== "file:") {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+      });
+    }
+
+    migrateOldStorageIfNeeded();
+    makeCheckboxes("symptomsGroup", symptomOptions, "symptom");
+    makeCheckboxes("triggersGroup", triggerOptions, "trigger");
+    resetForm();
+    render();
+  </script>
+</body>
+</html>
